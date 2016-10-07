@@ -2,16 +2,16 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-class messageHandler:
+SMS_GATEWAYS = {
+	'AT&T' 		: 'txt.att.net',
+	'CRICKET' 	: 'mms.cricketwireless.net',
+	'SPRINT' 	: 'pm.sprint.com',
+	'TMOBILE'	: 'tmomail.net',
+	'VERIZON' 	: 'vtext.com',
+	'VIRGIN' 	: 'vmobl.com'
+}
 
-	SMSGATEWAYS = {
-		'AT&T' 		: 'txt.att.net',
-		'CRICKET' 	: 'mms.cricketwireless.net',
-		'SPRINT' 	: 'pm.sprint.com',
-		'TMOBILE'	: 'tmomail.net',
-		'VERIZON' 	: 'vtext.com',
-		'VIRGIN' 	: 'vmobl.com'
-	}
+class messageHandler:
 
 	def __init__(self, username, password):
 		self.username 		= username
@@ -29,7 +29,7 @@ class messageHandler:
 		mailServer.starttls()
 		mailServer.ehlo()
 		mailServer.login(self.username, self.password)
-		# Do we need to prepare the message with MIMEMultipart?
+
 		mailServer.sendmail(self.username, recipientEmail, formattedMessage)
 		mailServer.close()
 
@@ -43,7 +43,7 @@ class messageHandler:
 		textServer.login(self.username, self.password)
 
 		try:
-			fullRecipientNumber = ''.join([str(recipientNumber), "@", SMSGATEWAYS[smsGateway]])
+			fullRecipientNumber = ''.join([str(recipientNumber), '@', SMS_GATEWAYS[smsGateway]])
 			textServer.sendmail(self.username, fullRecipientNumber, message)
 		except KeyError:
 			print "Invalid SMS Gateway, please try again."
@@ -56,6 +56,7 @@ class messageHandler:
 		"""
 		Create a header for the message such that the email format is preserved
 		"""
-		formattedMessage 	= 'To:' + recipientEmail + '\n' + 'From: ' + self.username + '\n' + 'Subject:' + subject + '\n'
+		formattedMessage 	= 'To:' + recipientEmail + '\n' + 'From: ' + \
+								self.username + '\n' + 'Subject:' + subject + '\n'
 		formattedMessage	= formattedMessage + '\n ' + message + ' \n\n'
 		return formattedMessage

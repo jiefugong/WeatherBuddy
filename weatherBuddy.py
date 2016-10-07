@@ -7,14 +7,15 @@ import datetime
 from bs4 import BeautifulSoup
 from messageSender import messageHandler
 
-def getWeather(zipCode, units="metric", options=[]):
+def getWeather(zipCode, options=[], units="metric"):
 	"""
 	Uses the pywapi module to extract the weather from the given zipCode
 
 	Pywapi redirects the request to Weather.com and returns an unorganized dictionary
+
+	@jgong 10/7/2016 passing
 	"""
-	weatherInformationDictionary = pywapi.get_weather_from_weather_com(zipCode, units)
-	todaysWeatherString = getTodaysWeather(weatherInformationDictionary)
+	weatherInformationDictionary = pywapi.get_weather_from_weather_com(str(zipCode), units)
 
 	if options:
 		todaysWeatherString = getVerboseWeather(weatherInformationDictionary, options)
@@ -27,17 +28,20 @@ def getTodaysWeather(weatherDictionary):
 	"""
 	Takes in a dictionary of weather information and parses it to form
 	a neatly formatted string of the day's weather
+
+	@jgong 10/7/2016 passing
 	"""
 
 	todaysDate 			= datetime.datetime.now().strftime("%Y-%m-%d")
 	todaysWeather		= weatherDictionary['current_conditions']
 
-	currentTemperature 	= str(todaysWeather['temperature']) # in celsius
-	currentConditions 	= str(todaysWeather['text'])
+	currentTemperature 	= str((int(todaysWeather['temperature']) * 1.8) + 32)
+	currentConditions 	= str(todaysWeather['text']).lower()
 
 	# Add more potential pieces of information we could gather e.g
 	# wind, nearest station, most recent update
-	combinedInformation = ''.join(["Your weather for ", todaysDate, " is ", currentConditions, " with a temperature of ", currentTemperature])
+	combinedInformation = "Your weather for %s is %s with a temperature of %s degrees Fahrenheit." \
+								% (todaysDate, currentConditions, currentTemperature)
 	return combinedInformation
 
 def getVerboseWeather(weatherDictionary, options):
@@ -70,49 +74,53 @@ def getVerboseWeather(weatherDictionary, options):
 def parseForExtraDailyInfo(weatherDictionary):
 	"""
 	Parses the weather dictionary for slightly more basic weather information
+
+	@jgong 10/7/2016 passing
 	"""
 	todaysDate 			= datetime.datetime.now().strftime("%Y-%m-%d")
 	todaysWeather		= weatherDictionary['current_conditions']
 
-	currentTemperature 		= str(todaysWeather['temperature']) # in celsius
-	currentConditions 		= str(todaysWeather['text']) # i.e sunny, windy, etc
+	currentTemperature 		= str((int(todaysWeather['temperature']) * 1.8) + 32)	
+	currentConditions 		= str(todaysWeather['text']).lower() # i.e sunny, windy, etc
 	lastUpdateTime			= str(todaysWeather['last_updated'])
 	nearestWeatherStation	= str(todaysWeather['station'])
 	windSpeed				= str(todaysWeather['wind']['speed'])
 	windDirection			= str(todaysWeather['wind']['text'])
 
-	combinedInformation = ''.join([
-		"Your weather for ", todaysDate, " is: ", currentConditions, " with a temperature of: ", currentTemperature, ".\n", \
-		"This information was last updated at: ", lastUpdateTime, " from: ", nearestWeatherStation, ".\n", \
-		"Today's wind speed is: ", windSpeed, " in the direction of: ", windDirection, "."
-	])
+	combinedInformation = "Your weather for %s is: %s with a temperature of: %s." % (todaysDate, currentConditions, currentTemperature)
+	combinedInformation += "This information was last updated at: %s from: %s. " % (lastUpdateTime, nearestWeatherStation)
+	combinedInformation += "Today's wind speed is: %s MPH in the %s direction." % (windSpeed, windDirection)
 
 	return combinedInformation
 
 def parseForWeeklyForecastInfo(weatherDictionary):
 	"""
 	Parses the weather dictionary for basic forecasts on the entire week
+
+	@jgong 10/7/2016 passing
 	"""
 	weeklyForecast 		 = weatherDictionary['forecasts']
-	weeklyForecastString = ""
+	weeklyForecastString = []
 
 	for dailyInformationDictionary in weeklyForecast:
 		weekday 			= str(dailyInformationDictionary['day_of_week'])
 		date 				= str(dailyInformationDictionary['date'])
-		dailyLow			= str(dailyInformationDictionary['low'])
-		dailyHigh			= str(dailyInformationDictionary['high'])
+		dailyLow			= str(((int(dailyInformationDictionary['low']) * 1.8)) + 32)
+		dailyHigh			= str(((int(dailyInformationDictionary['high']) * 1.8)) + 32)
 		daytimeConditions 	= str(dailyInformationDictionary['day']['brief_text'])
 		nightConditions 	= str(dailyInformationDictionary['night']['brief_text'])
 
-		dailyCombinedInformation = ''.join(["On ", weekday, ", ", date, " with a low of: ", daily low, \
-			" and a high of ", dailyHigh, ". During the day it will be ", daytimeConditions " and during the evening ", nightConditions, ".\n"])
+		dailyCombinedInformation = "On %s, %s with a low of %s and a high of %s. During the day it will be %s and during the evening %s." \
+										% (weekday, date, dailyLow, dailyHigh, daytimeConditions, nightConditions)
 		weeklyForecastString.append(dailyCombinedInformation)
 
-	return weeklyForecastString
+	return ' '.join(weeklyForecastString)
 
 def parseForLocationInfo(weatherDictionary):
 	"""
 	Parses the weather dictionary for basic information on the forecast's location
+
+	@jgong 10/7/2016 passing
 	"""
 	todaysLocation = weatherDictionary['location']
 
@@ -120,8 +128,7 @@ def parseForLocationInfo(weatherDictionary):
 	longitude	= str(todaysLocation['lon'])
 	city 		= str(todaysLocation['name'])
 
-	combinedInformation = ''.join(["This forecast was provided for: ", city, \
-		" at the coordinates of: (", latitude, ", ", longitude, ")\n"])
+	combinedInformation = "This forecast was provided for %s at the coordinates of (%s, %s)." % (city, latitude, longitude)
 
 	return combinedInformation
 
@@ -132,6 +139,8 @@ def populateListOfRecipients(fileName):
 
 	Assumes the list is well-formatted as a CSV with:
 	Name,PhoneNumber,Carrier
+
+	@jgong 10/7/2016 passing
 	"""
 	recipients = {}
 
@@ -145,8 +154,10 @@ def populateListOfRecipients(fileName):
 def getUserInformation(line):
 	"""
 	Sanitizes a line from the recipients.txt file and breaks it apart
+
+	@jgong 10/7/2016 passing
 	"""
-	sanitzedLine = line.replace(' ', '').split(',').replace('\n', '')
+	sanitizedLine = line.replace(' ', '').replace('\n', '').split(',')
 
 	name 	= sanitizedLine[0]
 	number 	= sanitizedLine[1]
@@ -158,6 +169,8 @@ def getUsernameAndPassword(fileName):
 	"""
 	Parses through credentials.txt to receive the stored username and 
 	password of the client through which weather information is sent
+
+	@jgong 10/7/2016 passing
 	"""
 	with open(fileName, 'r') as credentialsFile:
 		username = credentialsFile.readline().replace('\n','')
@@ -165,29 +178,27 @@ def getUsernameAndPassword(fileName):
 
 	return username, password
 
-
 def promptUserForLocation():
 	"""
 	Entry point for the program -- gives the user an introduction of 
 	this program's functionality and asks the user to provide basic info
 	"""
-	print "Hello! Welcome to your personal weather assistant. Please follow the \
-		prompts below to get your personal weather report!"
+	print "Hello! Welcome to your personal weather assistant. Please follow the prompts below to get your personal weather report!\n"
 
 	zipCode 		= input("What is the zipcode of where you would like weather for?\n")
-	receiveTexts	= input("Would you like to receive texts? If not, you will receive an email message.\n").lower() == 'true'
+	receiveTexts	= str(input("Would you like to receive texts? If not, you will receive an email message.\n")).lower() in {'true', 'y', 'yes'}
 	recipientEmail	= ""
 
 	if receiveTexts:
-		fullName 	= input("If you have not already entered your information in recipients.txt, please enter your full name\n")
+		fullName 	= input("Please enter your full name\n")
 		phoneNumber = input("What is your phone number? Enter only the digits along with the 3 digit area code\n")
 		gateway	 	= input("Please enter your carrier\n").upper()
-		updateRecipientsFile(fullName, phoneNumber, gateway)
+		# updateRecipientsFile(fullName, phoneNumber, gateway)
 	else: 
 		recipientEmail = input("What email would you like to receive your weather at?\n")
 
 	print "Thank you! You will receive your weather shortly."
-	return zipCode, recieveTexts, recipientEmail
+	return zipCode, receiveTexts, recipientEmail
 
 
 def main():
@@ -200,7 +211,7 @@ def main():
 		recipients = populateListOfRecipients('recipients.txt')
 
 		for recipient in recipients:
-			messageClient.sendTextMessage(recipient['number'], recipient['gateway'], todaysWeather)
+			messageClient.sendTextMessage(recipients[recipient]['number'], recipients[recipient]['gateway'], todaysWeather)
 	else:
 		messageClient.sendEmailMessage(recipientEmail, todaysWeather)
 
